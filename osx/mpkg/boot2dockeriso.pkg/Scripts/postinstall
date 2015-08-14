@@ -73,5 +73,7 @@ if [ ! $COMMAND_LINE_INSTALL ]; then
 
 else
   logger -t DOCKER_TOOLBOX "Running in COMMAND_LINE_INSTALL mode, skipping setup."
+  mv /usr/local/share/boot2docker/io.boot2dockeriso.setup.plist /Library/LaunchAgents/io.boot2dockeriso.setup.plist
+  mv /usr/local/share/boot2docker/docker-toolbox-setup.sh /usr/local/bin/docker-toolbox-setup.sh
   exit 0
 fi

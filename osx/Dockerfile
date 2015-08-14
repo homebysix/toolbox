@@ -132,14 +132,11 @@ RUN cd /mpkg/boot2dockeriso.pkg && \
   rm -r Scripts && mv Scripts.bin Scripts && \
 	mkdir ./rootfs && \
 	cd ./rootfs && \
-	mkdir -p usr/local/bin && \
-	mkdir -p Library/LaunchAgents && \
 	cp /boot2docker.iso . && \
-	cp ../io.boot2dockeriso.setup.plist Library/LaunchAgents/ && \
-	chmod -R 644 Library/LaunchAgents && \
-	chown -R 0:0 Library/LaunchAgents && \
-	cp ../docker-toolbox-setup.sh usr/local/bin/ && \
-	chmod +x usr/local/bin/docker-toolbox-setup.sh && \
+	cp /mpkg/io.boot2dockeriso.setup.plist . && \
+	chown 0:0 io.boot2dockeriso.setup.plist && \
+	cp /mpkg/docker-toolbox-setup.sh . && \
+	chmod +x docker-toolbox-setup.sh && \
 	find . | cpio -o --format odc | gzip -c > ../Payload && \
 	mkbom . ../Bom && \
 	sed -i \
