@@ -2,21 +2,26 @@
 
 set -o pipefail
 
-# Only do the user-specific and interactive setup/migration if we're not running in CLI install mode
-if [ ! $COMMAND_LINE_INSTALL ]; then
-
-  logger -t DOCKER_TOOLBOX "Running in interactive mode, attempting setup."
+if [[ ! -e ~/.docker/machine/.toolboxsetupdone ]]; then
+  
+  MYUID=$(/usr/bin/id -u)
+  MYGID=$(/usr/bin/id -g)
 
   # Place boot2docker ISO in cache
-  mkdir -p ~/.docker/machine/cache
-  cp /usr/local/share/boot2docker/boot2docker.iso ~/.docker/machine/cache/boot2docker.iso
-  chown -R $USER:staff ~/.docker
+  if [[ ! -d ~/.docker/machine/cache ]]; then
+    mkdir -p ~/.docker/machine/cache
+  fi
+
+  if [[ ! -e ~/.docker/machine/cache/boot2docker.iso ]]; then
+      cp /usr/local/share/boot2docker/boot2docker.iso ~/.docker/machine/cache/boot2docker.iso
+      chown -R $MYUID:$MYGID ~/.docker
+  fi
 
   # Fix permissions on binaries
-  chown -R $USER:admin /usr/local/bin/docker
-  chown -R $USER:admin /usr/local/bin/docker-machine
-  chown -R $USER:admin /usr/local/bin/docker-compose
-  chown -R $USER:admin /usr/local/bin/docker-toolbox-setup.sh
+  # chown -R $MYUID:admin /usr/local/bin/docker
+  # chown -R $MYUID:admin /usr/local/bin/docker-machine
+  # chown -R $MYUID:admin /usr/local/bin/docker-compose
+  # chown -R $MYUID:admin /usr/local/bin/docker-toolbox-setup.sh
 
   # Migrate Boot2Docker VM if VirtualBox is installed
   BOOT2DOCKER_VM=boot2docker-vm
@@ -29,10 +34,10 @@ if [ ! $COMMAND_LINE_INSTALL ]; then
   DOCKER_MACHINE_MIGRATION_CHECK=$?
 
   if [ -f $VBOXMANAGE ] && [ -f /usr/local/bin/docker-machine ] && [ $DOCKER_MACHINE_MIGRATION_CHECK -eq 0 ]; then
-    sudo -u $USER $VBOXMANAGE showvminfo $BOOT2DOCKER_VM &> /dev/null
+    sudo -u $MYUID $VBOXMANAGE showvminfo $BOOT2DOCKER_VM &> /dev/null
     BOOT2DOCKER_VM_EXISTS_CODE=$?
 
-    sudo -u $USER $VBOXMANAGE showvminfo $VM &> /dev/null
+    sudo -u $MYUID $VBOXMANAGE showvminfo $VM &> /dev/null
     VM_EXISTS_CODE=$?
 
     # Exit if there's no boot2docker vm, or the destination VM already exists
@@ -46,7 +51,7 @@ if [ ! $COMMAND_LINE_INSTALL ]; then
         rm -rf ~/.docker/machine/machines/$VM
 
         # Run migration, opening logs if it fails
-        sudo -u $USER PATH=/Applications/VirtualBox.app/Contents/MacOS/:$PATH /usr/local/bin/docker-machine -D create -d virtualbox --virtualbox-import-boot2docker-vm $BOOT2DOCKER_VM $VM 2>&1 | sed -e '/BEGIN/,/END/d' > /tmp/toolbox-migration-logs.txt
+        sudo -u $MYUID PATH=/Applications/VirtualBox.app/Contents/MacOS/:$PATH /usr/local/bin/docker-machine -D create -d virtualbox --virtualbox-import-boot2docker-vm $BOOT2DOCKER_VM $VM 2>&1 | sed -e '/BEGIN/,/END/d' > /tmp/toolbox-migration-logs.txt
         if [ $? -eq 0 ]; then
           osascript -e 'tell app "System Events" to display dialog "Boot2Docker VM migrated successfully to a Docker Machine VM named \"default\"" buttons {"Ok"} default button 1'
         else
@@ -66,12 +71,6 @@ if [ ! $COMMAND_LINE_INSTALL ]; then
     open /Applications/Docker
   fi
 
-  osascript -e 'tell app "System Events" to display dialog "Would you like to submit anonymous system information in order for us to track general install metrics for Docker Toolbox?" buttons {"Allow", "Skip"} default button 2 cancel button 2 with icon 0  with title "Send System Info?"'
-  if [ $? -eq 0 ]; then
-    curl -H "Content-Type: application/json" -X POST "https://api.mixpanel.com/track/?data=%EVENT_DATA%"
-  fi
+  touch ~/.docker/machine/.toolboxsetupdone
 
-else
-  logger -t DOCKER_TOOLBOX "Running in COMMAND_LINE_INSTALL mode, skipping setup."
-  exit 0
 fi
